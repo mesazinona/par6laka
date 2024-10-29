@@ -295,19 +295,14 @@ h1 {
         deleteBtn.textContent = "Supprimer";
         deleteBtn.className = "btn-delete";
         deleteBtn.onclick = function() {
-            if (data.user === username) {
-                // Supprimer uniquement pour l'envoyeur sans affecter le destinataire
-                msgDiv.remove();
-            } else {
-                // Supprimer pour les deux côtés si c'est le destinataire qui clique
-                msgDiv.classList.add("fondu");
-                setTimeout(function() {
-                    msgDiv.remove();
-                    db.child("messages/" + key).remove();
-                }, 1000);
-            }
-        };
-        actionButtons.appendChild(deleteBtn);
+    // Supprimer pour les deux côtés, peu importe qui clique sur "Supprimer"
+    msgDiv.classList.add("fondu");
+    setTimeout(function() {
+        msgDiv.remove();
+        db.child("messages/" + key).remove(); // Suppression dans Firebase
+    }, 1000);
+};
+actionButtons.appendChild(deleteBtn);
 
         msgDiv.appendChild(actionButtons);
         document.getElementById("messages").appendChild(msgDiv);
