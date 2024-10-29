@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Par6laka Messenger - Room sécurisé</title>
+    <!-- Inclure Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <style>
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    font-family: 'Arial', sans-serif;
+    color: #e0e0e0;
+    margin: 0;
+}
+
+#login-container, #chat-container {
+    width: 70%;
+    max-width: 800px;
+    background: rgba(40, 40, 60, 0.95);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.5);
+    display: none;
+}
+
+#login-container {
+    display: block;
+    animation: fadeIn 0.5s ease;
+}
+
+input, button {
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+}
+
+input {
+    width: 100%;
+    margin-bottom: 10px;
+    background-color: #33384d;
+    color: #e0e0e0;
+}
+
+button {
+    background-color: #555973;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #44495c;
+}
+
+#messages {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #1a1a2e;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.message {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    word-wrap: break-word;
+    max-width: 70%;
+    color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    transition: opacity 1s ease;
+    opacity: 1;
+}
+
+.message .msg-text.flou {
+    filter: blur(4px);
+}
+
+.message.fondu {
+    opacity: 0;
+}
+
+.action-buttons .btn-read {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 5px;
+    margin-left: auto;
+}
+
+.message.user1 {
+    background-color: #4169e1;
+    align-self: flex-end;
+    border-radius: 10px 10px 0 10px;
+}
+
+.message.user2 {
+    background-color: #b3b3b3;
+    align-self: flex-start;
+    border-radius: 10px 10px 10px 0;
+}
+
+/* Style pour le nom de l'utilisateur */
+.username {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #ffd700;
+    margin-right: 10px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+h1 {
+    font-size: 2.5em;
+    color: #ff6b6b;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffcc00;
+    padding: 20px;
+    border: 2px solid #ff6b6b;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 15px #ff6b6b, 0 0 30px #ff4e4e;
+    text-align: center;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+    </style>
+</head>
+<body>
+    <h1>Parsilaka Messenger</h1>
+
+    <!-- Section de connexion -->
+    <div id="login-container">
+        <input type="text" id="username" placeholder="Votre pseudo" required><br>
+        <input type="text" id="room-name-input" placeholder="Lieu de rendez-vous" required><br>
+        <input type="password" id="password-input" placeholder="Mot de passe" required><br>
+        <button onclick="joinRoom()">Rejoindre</button>
+    </div>
+
+    <!-- Section de chat -->
+    <div id="chat-container">
+        <div id="room-name-display" style="font-size: 1.5em; font-weight: bold; color: #ffd700; margin-bottom: 10px;"></div>
+
+        <div id="messages"></div>
+        <div id="input-section">
+            <button onclick="toggleEmojiPicker()">😊</button>
+            <input type="text" id="message-input" placeholder="Écrivez un message">
+            <button onclick="sendMessage()">Envoyer</button>
+            <button onclick="quitRoom()">Quitter</button>
+        </div>
+        <div id="emoji-picker" style="display: none;">
+            <!-- Emoji Picker Content -->
+        </div>
+    </div>
+<script>
+    var firebaseConfig = {
+        apiKey: "AIzaSyDJw_Y3ALnNT3Vw7q3m1TU24kVRoIhd2NE",
+        authDomain: "mesazinona.firebaseapp.com",
+        databaseURL: "https://mesazinona-default-rtdb.firebaseio.com",
+        projectId: "mesazinona",
+        storageBucket: "mesazinona.appspot.com",
+        messagingSenderId: "654815151560",
+        appId: "1:654815151560:web:c12ea312eb46d710b22cfd"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    var db;
+    var username;
+    var roomName;
+
+    function joinRoom() {
+        username = document.getElementById("username").value;
+        roomName = document.getElementById("room-name-input").value;
+        var password = document.getElementById("password-input").value;
+
+        db = firebase.database().ref("rooms/" + roomName);
+
+        db.child("password").once('value').then(function(snapshot) {
+            var dbPassword = snapshot.val();
+            if (dbPassword === null) {
+                db.set({
+                    password: password,
+                    messages: {}
+                });
+                alert("Room créé avec succès !");
+                document.getElementById("room-name-display").textContent = "Lieu : " + roomName;
+                switchToChat();
+            } else if (dbPassword === password) {
+                alert("Connexion réussie !");
+                document.getElementById("room-name-display").textContent = "Lieu : " + roomName;
+                switchToChat();
+            } else {
+                alert("Mot de passe incorrect !");
+            }
+        });
+    }
+
+    function switchToChat() {
+        document.getElementById("login-container").style.display = "none";
+        document.getElementById("chat-container").style.display = "block";
+        loadMessages();
+    }
+
+    function sendMessage() {
+        var messageInput = document.getElementById("message-input");
+        var message = messageInput.value;
+
+        if (message.trim() === "") {
+            return;
+        }
+
+        var msgData = { "user": username, "message": message, "seen": false };
+        var msgRef = db.child("messages").push();
+        msgRef.set(msgData);
+
+        messageInput.value = '';
+    }
+
+    function loadMessages() {
+        db.child('messages').on('child_added', function(snapshot) {
+            displayMessage(snapshot.key, snapshot.val());
+        });
+
+        db.child('messages').on('child_removed', function(snapshot) {
+            const removedMessage = document.getElementById(snapshot.key);
+            if (removedMessage) {
+                removedMessage.remove();
+            }
+        });
+    }
+
+    function displayMessage(key, data) {
+        var msgDiv = document.createElement("div");
+        msgDiv.id = key;
+        msgDiv.className = (data.user === username ? "message user1" : "message user2");
+
+        var usernameDiv = document.createElement("div");
+        usernameDiv.className = "username";
+        usernameDiv.textContent = data.user;
+
+        var textSpan = document.createElement("span");
+        textSpan.className = "msg-text";
+        textSpan.textContent = data.message;
+
+        msgDiv.appendChild(usernameDiv);
+        msgDiv.appendChild(textSpan);
+
+        var actionButtons = document.createElement("div");
+        actionButtons.className = "action-buttons";
+
+        // Bouton Lire/Masquer pour les messages reçus uniquement
+        if (data.user !== username) {
+            textSpan.classList.add("flou");
+
+            var readBtn = document.createElement("button");
+            readBtn.textContent = "Lire";
+            readBtn.className = "btn-read";
+            readBtn.onclick = function() {
+                if (textSpan.classList.contains("flou")) {
+                    textSpan.classList.remove("flou");
+                    readBtn.textContent = "Masquer";
+                    setTimeout(function() {
+                        msgDiv.classList.add("fondu");
+                        setTimeout(function() {
+                            msgDiv.remove();
+                            db.child("messages/" + key).remove();
+                        }, 1000);
+                    }, 10000);
+                } else {
+                    textSpan.classList.add("flou");
+                    readBtn.textContent = "Lire";
+                }
+            };
+            actionButtons.appendChild(readBtn);
+        }
+
+        // Bouton Supprimer pour l'envoyeur et le destinataire
+        var deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Supprimer";
+        deleteBtn.className = "btn-delete";
+        deleteBtn.onclick = function() {
+            if (data.user === username) {
+                // Supprimer uniquement pour l'envoyeur sans affecter le destinataire
+                msgDiv.remove();
+            } else {
+                // Supprimer pour les deux côtés si c'est le destinataire qui clique
+                msgDiv.classList.add("fondu");
+                setTimeout(function() {
+                    msgDiv.remove();
+                    db.child("messages/" + key).remove();
+                }, 1000);
+            }
+        };
+        actionButtons.appendChild(deleteBtn);
+
+        msgDiv.appendChild(actionButtons);
+        document.getElementById("messages").appendChild(msgDiv);
+
+        scrollToBottom();
+    }
+
+    function scrollToBottom() {
+        var messagesDiv = document.getElementById("messages");
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function quitRoom() {
+        document.getElementById("chat-container").style.display = "none";
+        document.getElementById("login-container").style.display = "block";
+        document.getElementById("room-name-display").textContent = "";
+        document.getElementById("messages").innerHTML = "";
+    }
+
+    document.getElementById("message-input").addEventListener("keydown", function(event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+</script>
+    <footer style="margin-top: 20px; font-size: 0.8rem; color: #999; text-align: center;">
+        &copy; BigLittleBob 2024
+    </footer>
+</body>
+</html>
